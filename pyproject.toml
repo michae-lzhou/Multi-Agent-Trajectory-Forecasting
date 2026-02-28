@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matf"
+version = "0.1.0"
+description = "Multi-agent trajectory forecasting project"
+authors = [
+    { name = "Michael Zhou, Yibo Chen" }
+]
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = [
+    "av2",
+    "torch",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "tqdm",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

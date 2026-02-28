@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: matf
+Version: 0.1.0
+Summary: Multi-agent trajectory forecasting project
+Author: Michael Zhou, Yibo Chen
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: tqdm
+
+# Multi-Agent Trajectory-Forecasting
+UCLA ECE C247A Final Project

@@ -1,0 +1,17 @@
+model:
+  hidden_size: 256              # 64, 128, 256
+  num_layers: 2                 # 1, 2, 3
+  decoder_input: "last_pred"    # "zero", "last_pred", "teacher_forcing"
+  dropout: 0.0
+
+training:
+  batch_size: 32
+  learning_rate: 1e-3
+  num_epochs: 20
+  grad_clip: 1.0
+  checkpoint_dir: "checkpoints/ncap=8"
+
+data:
+  neighbor_cap: none               # None, 2, 8, 22
+  train_dir: "data/processed/train"
+  val_dir: "data/processed/val"

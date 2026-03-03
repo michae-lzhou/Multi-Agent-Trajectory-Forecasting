@@ -44,7 +44,7 @@ def run(split, neighbor_cap):
 
         parquet_path = parquet_files[0]
 
-        cap_str = "all" if neighbor_cap is None else str(neighbor_cap)
+        cap_str = "none" if neighbor_cap is None else str(neighbor_cap)
         out_path = scenario_folder / f"baseline_data_ncap_{cap_str}.npz"
 
         if out_path.exists():

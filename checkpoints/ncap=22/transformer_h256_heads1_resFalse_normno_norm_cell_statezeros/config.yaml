@@ -1,0 +1,22 @@
+model:
+  type: transformer
+  hidden_size: 256
+  num_layers: 2
+  num_heads: 1
+  dropout: 0.0
+  use_residual: false
+  layer_norm: no_norm
+  cell_state: zeros
+  decoder_input: last_pred
+
+training:
+  batch_size: 32
+  learning_rate: 3e-4
+  num_epochs: 20
+  grad_clip: 1.0
+  checkpoint_dir: checkpoints/ncap=22
+
+data:
+  neighbor_cap: 22
+  train_dir: data/processed/train
+  val_dir: data/processed/val

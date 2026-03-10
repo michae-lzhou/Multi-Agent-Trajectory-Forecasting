@@ -9,8 +9,10 @@ from matf.utils.metrics import min_ade, min_fde, miss_rate
 from matf.utils.config import load_config, save_config, make_run_name, \
                               print_config
 
-def evaluate(model, data_dir, neighbor_cap=None, batch_size=32):
-    dataset = MATFDataset(data_dir, neighbor_cap=neighbor_cap)
+def evaluate(model, data_dir, neighbor_cap=None, batch_size=32,
+             data_prefix="baseline"):
+    dataset = MATFDataset(data_dir, neighbor_cap=neighbor_cap,
+                          data_prefix=data_prefix)
     loader  = DataLoader(dataset, batch_size=batch_size, collate_fn=collate_fn)
 
     all_ade = []
@@ -69,7 +71,24 @@ def load_model(args):
             raise ValueError("--config required for transformer")
         if args.checkpoint is None:
             raise ValueError("--checkpoint required for transformer")
-
+        if not Path(args.checkpoint).exists():
+            raise FileNotFoundError(f"Checkpoint not found: {args.checkpoint}")
+    
+        cfg = load_config(args.config)
+        print_config(cfg)
+        from matf.models.transformer import TransformerForecaster
+        transformer_instance = TransformerForecaster(
+            hidden_size=cfg.model.hidden_size,
+            num_layers=cfg.model.num_layers,
+            num_heads=cfg.model.num_heads,
+            dropout=cfg.model.dropout,
+            use_residual=cfg.model.use_residual,
+            layer_norm=cfg.model.layer_norm,
+        )
+        checkpoint = torch.load(args.checkpoint, weights_only=True)
+        transformer_instance.load_state_dict(checkpoint["model_state_dict"])
+        transformer_instance.eval()
+        return make_transformer_callable(transformer_instance)
     else:
         raise ValueError(f"Unknown model: {args.model}")
 
@@ -80,6 +99,18 @@ def make_lstm_callable(lstm_instance):
     def predict(batch):
         return lstm_instance(
             batch["focal_obs"],
+            mode="last_pred"
+        )
+    return predict
+
+def make_transformer_callable(model):
+    def predict(batch):
+        return model(
+            focal_obs=batch["focal_obs"],
+            focal_type=batch["focal_type"],
+            neighbor_obs=batch["neighbor_obs"],
+            neighbor_mask=batch["neighbor_mask"],
+            neighbor_types=batch["neighbor_types"],
             mode="last_pred"
         )
     return predict
@@ -117,6 +148,11 @@ if __name__ == "__main__":
         default="checkpoints",
         help="Folder to checkpoints"
     )
+    parser.add_argument(
+        "--data_prefix",
+        type=str,
+        default="baseline",
+        help="baseline, info, orien, sort"
 
     args = parser.parse_args()
 
@@ -125,5 +161,6 @@ if __name__ == "__main__":
     evaluate(
         model=model,
         data_dir=args.data_dir,
-        neighbor_cap=args.neighbor_cap
+        neighbor_cap=args.neighbor_cap,
+        data_prefix=args.data_prefix
     )

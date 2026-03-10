@@ -2,7 +2,7 @@ model:
   type: lstm
   hidden_size: 256              # 64, 128, 256
   num_layers: 2                 # 1, 2, 3
-  decoder_input: "last_pred"    # "zero", "last_pred", "teacher_forcing"
+  decoder_input: "teacher_forcing"    # "zero", "last_pred", "teacher_forcing"
   dropout: 0.0
 
 training:
@@ -14,6 +14,5 @@ training:
 
 data:
   neighbor_cap: 22               # None, 2, 8, 22
-  data_prefix: info              # baseline, info, orien, sort
   train_dir: "data/processed/train"
   val_dir: "data/processed/val"

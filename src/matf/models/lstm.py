@@ -9,7 +9,7 @@ class LSTMEncoder(nn.Module):
         self.num_layers = num_layers
 
         self.lstm = nn.LSTM(
-            input_size=4,
+            input_size=5,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,

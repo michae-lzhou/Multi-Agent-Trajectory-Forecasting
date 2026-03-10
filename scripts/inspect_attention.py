@@ -26,14 +26,17 @@ model.load_state_dict(ckpt["model_state_dict"])
 model.eval()
 
 # --- load one batch ---
-val_dataset = MATFDataset(cfg.data.val_dir, neighbor_cap=cfg.data.neighbor_cap)
+val_dataset = MATFDataset(cfg.data.val_dir, neighbor_cap=cfg.data.neighbor_cap,
+                          data_prefix=cfg.data.data_prefix)
 val_loader  = DataLoader(val_dataset, batch_size=N_SCENES,
                          shuffle=False, collate_fn=collate_fn)
 batch = next(iter(val_loader))
 
-focal_obs     = batch["focal_obs"].to(device)
-neighbor_obs  = batch["neighbor_obs"].to(device)
-neighbor_mask = batch["neighbor_mask"].to(device)
+focal_obs      = batch["focal_obs"].to(device)
+focal_type     = batch["focal_type"].to(device)
+neighbor_obs   = batch["neighbor_obs"].to(device)
+neighbor_mask  = batch["neighbor_mask"].to(device)
+neighbor_types = batch["neighbor_types"].to(device)
 
 # --- forward pass ---
 # you need TransformerForecaster.forward to return attn_weights too
@@ -41,8 +44,10 @@ neighbor_mask = batch["neighbor_mask"].to(device)
 with torch.no_grad():
     pred, attn_weights = model(
         focal_obs=focal_obs,
+        focal_type=focal_type,
         neighbor_obs=neighbor_obs,
         neighbor_mask=neighbor_mask,
+        neighbor_types=neighbor_types,
         mode="last_pred",
         return_attn=True   # add this flag to forward
     )

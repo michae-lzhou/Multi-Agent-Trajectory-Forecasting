@@ -14,10 +14,9 @@ training:
   learning_rate: 3e-4
   num_epochs: 50
   grad_clip: 1.0
-  checkpoint_dir: checkpoints/data_ablations
+  checkpoint_dir: checkpoints/ncap=22
 
 data:
   neighbor_cap: 22
-  data_prefix: info                  #baseline, info, orien, sort
   train_dir: data/processed/train
   val_dir: data/processed/val

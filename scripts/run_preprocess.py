@@ -19,6 +19,13 @@ def parse_args():
         help='int or "none"',
     )
 
+    parser.add_argument(
+        "--data_prefix",
+        type=str,
+        default="baseline",
+        help="baseline, info, orien, sort",
+    )
+
     return parser.parse_args()
 
 
@@ -28,7 +35,7 @@ def parse_neighbor_cap(cap_str):
     return int(cap_str)
 
 
-def run(split, neighbor_cap):
+def run(split, neighbor_cap, data_prefix):
     base_dir = Path("data/processed") / split
     scenario_dirs = sorted(base_dir.iterdir())
 
@@ -45,7 +52,7 @@ def run(split, neighbor_cap):
         parquet_path = parquet_files[0]
 
         cap_str = "none" if neighbor_cap is None else str(neighbor_cap)
-        out_path = scenario_folder / f"baseline_data_ncap_{cap_str}.npz"
+        out_path = scenario_folder / f"{data_prefix}_data_ncap_{cap_str}.npz"
 
         if out_path.exists():
             continue
@@ -63,6 +70,7 @@ def run(split, neighbor_cap):
 if __name__ == "__main__":
     args = parse_args()
     neighbor_cap = parse_neighbor_cap(args.neighbor_cap)
+    data_prefix = args.data_prefix
 
     for split in args.splits:
-        run(split, neighbor_cap)
+        run(split, neighbor_cap, data_prefix)

@@ -10,6 +10,7 @@ class TransformerForecaster(nn.Module):
 
         self.hidden_size=hidden_size
         self.num_layers=num_layers
+        self.type_embed=nn.Embedding(10, hidden_size)
 
         self.encoder = LSTMEncoder(hidden_size=hidden_size,
                                    num_layers=num_layers,
@@ -23,11 +24,13 @@ class TransformerForecaster(nn.Module):
                                    num_layers=num_layers,
                                    dropout=dropout)
 
-    def forward(self, focal_obs, neighbor_obs, neighbor_mask, target=None,
-                mode="last_pred", cell_state="zeros", return_attn=False):
+    def forward(self, focal_obs, focal_type, neighbor_obs, neighbor_mask, 
+                neighbor_types, target=None, mode="last_pred",
+                cell_state="zeros", return_attn=False):
         B, N, T, F = neighbor_obs.shape
         focal_h, focal_c = self.encoder(focal_obs)
         focal_token = focal_h[-1]
+        focal_token = focal_token + self.type_embed(focal_type.squeeze(1))
 
         neighbor_obs_flat = neighbor_obs[neighbor_mask]
         # neighbor_obs_flat = neighbor_obs.view(-1, T, F)
@@ -41,6 +44,9 @@ class TransformerForecaster(nn.Module):
         neighbor_tokens = torch.zeros(B, N, self.hidden_size,
                                       device=focal_obs.device)
         neighbor_tokens[neighbor_mask] = real_tokens
+        type_tokens = self.type_embed(neighbor_types)
+        type_tokens = type_tokens * neighbor_mask.unsqueeze(-1).float()
+        neighbor_tokens = neighbor_tokens + type_tokens
         neighbor_tokens = neighbor_tokens.view(B, N, -1)
 
         focal_token_3d = focal_token.unsqueeze(1)

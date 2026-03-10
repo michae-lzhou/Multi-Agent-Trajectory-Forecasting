@@ -15,18 +15,22 @@ def train_epoch(model, loader, optimizer, criterion, cfg, device):
     n_batches  = 0
 
     for batch in loader:
-        focal_obs     = batch["focal_obs"].to(device)
-        focal_future  = batch["focal_future"].to(device)
-        neighbor_obs  = batch["neighbor_obs"].to(device)
-        neighbor_mask = batch["neighbor_mask"].to(device)
+        focal_obs      = batch["focal_obs"].to(device)
+        focal_future   = batch["focal_future"].to(device)
+        focal_type     = batch["focal_type"].to(device)
+        neighbor_obs   = batch["neighbor_obs"].to(device)
+        neighbor_mask  = batch["neighbor_mask"].to(device)
+        neighbor_types = batch["neighbor_types"].to(device)
         mode = cfg.model.decoder_input
 
         # Forward pass
         pred = model(
             focal_obs=focal_obs,
             target=focal_future,
+            focal_type=focal_type,
             neighbor_obs=neighbor_obs,
             neighbor_mask=neighbor_mask,
+            neighbor_types=neighbor_types,
             mode=mode
         ) if cfg.model.type == "transformer" else model(
             focal_obs=focal_obs,
@@ -56,15 +60,19 @@ def val_epoch(cfg, model, loader, device):
 
     with torch.no_grad():
         for batch in loader:
-            focal_obs    = batch["focal_obs"].to(device)
-            focal_future = batch["focal_future"].to(device)
-            neighbor_obs  = batch["neighbor_obs"].to(device)
-            neighbor_mask = batch["neighbor_mask"].to(device)
+            focal_obs      = batch["focal_obs"].to(device)
+            focal_future   = batch["focal_future"].to(device)
+            focal_type     = batch["focal_type"].to(device)
+            neighbor_obs   = batch["neighbor_obs"].to(device)
+            neighbor_mask  = batch["neighbor_mask"].to(device)
+            neighbor_types = batch["neighbor_types"].to(device)
 
             pred = model(
                 focal_obs=focal_obs,
+                focal_type=focal_type,
                 neighbor_obs=neighbor_obs,
                 neighbor_mask=neighbor_mask,
+                neighbor_types=neighbor_types,
                 mode="last_pred"
             ) if cfg.model.type == "transformer" else model(
                     focal_obs=focal_obs, mode="last_pred")
@@ -114,9 +122,11 @@ def train(config_path):
     print_config(cfg)
 
     train_dataset = MATFDataset(cfg.data.train_dir,
-                                neighbor_cap=cfg.data.neighbor_cap)
+                                neighbor_cap=cfg.data.neighbor_cap,
+                                data_prefix=cfg.data.data_prefix)
     val_dataset = MATFDataset(cfg.data.val_dir,
-                              neighbor_cap=cfg.data.neighbor_cap)
+                              neighbor_cap=cfg.data.neighbor_cap,
+                              data_prefix=cfg.data.data_prefix)
 
     train_loader = DataLoader(train_dataset, batch_size=cfg.training.batch_size,
                               shuffle=True, collate_fn=collate_fn)

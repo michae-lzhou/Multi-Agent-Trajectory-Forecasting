@@ -1,11 +1,15 @@
 import argparse
 import torch
 from pathlib import Path
+from pathlib import Path
 from torch.utils.data import DataLoader
 from matf.data.dataset import MATFDataset, collate_fn
 from matf.models.cv import constant_velocity
 from matf.models.lstm import LSTMTrajectoryForecaster
+from matf.models.lstm import LSTMTrajectoryForecaster
 from matf.utils.metrics import min_ade, min_fde, miss_rate
+from matf.utils.config import load_config, save_config, make_run_name, \
+                              print_config
 from matf.utils.config import load_config, save_config, make_run_name, \
                               print_config
 
@@ -21,6 +25,9 @@ def evaluate(model, data_dir, neighbor_cap=None, batch_size=32,
 
     with torch.no_grad():
         for batch in loader:
+            predictions = model(batch)
+            # focal_obs    = batch["focal_obs"]
+            # predictions  = constant_velocity(focal_obs)         # (B, 1, 60, 2)
             predictions = model(batch)
             # focal_obs    = batch["focal_obs"]
             # predictions  = constant_velocity(focal_obs)         # (B, 1, 60, 2)
@@ -158,7 +165,10 @@ if __name__ == "__main__":
 
     model = load_model(args)
 
+    model = load_model(args)
+
     evaluate(
+        model=model,
         model=model,
         data_dir=args.data_dir,
         neighbor_cap=args.neighbor_cap,

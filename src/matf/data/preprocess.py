@@ -83,22 +83,70 @@ def build_neighbor_tensors(neighbors_dict, neighbor_cap=None):
     return n_obs
 
 def normalize_positions(focal_obs, focal_future, neighbor_obs):
-    # Normalize to the last observed position of the focal vehicle
-    t = 49
-    if t+1 != len(focal_obs):
-        raise ValueError(f"focal_obs has unexpected length of observed history")
+    t = 49  # present timestep
 
+    focal_obs = focal_obs.copy()
+    focal_future = focal_future.copy()
+    neighbor_obs = neighbor_obs.copy()
+
+    # 1. Translation origin = focal position at present
     origin_x = focal_obs[t, 0]
     origin_y = focal_obs[t, 1]
+    origin = np.array([origin_x, origin_y], dtype=np.float32)
 
-    focal_obs[:, 0] -= origin_x
-    focal_obs[:, 1] -= origin_y
+    # 2. Rotation angle: align focal heading to +x axis
+    # Use displacement from t-1 to t to approximate heading
+    dx = focal_obs[t, 0] - focal_obs[t - 1, 0]
+    dy = focal_obs[t, 1] - focal_obs[t - 1, 1]
 
-    focal_future[:, 0] -= origin_x
-    focal_future[:, 1] -= origin_y
+    # Fallback if nearly stationary
+    if np.hypot(dx, dy) < 1e-8:
+        dx = focal_obs[t, 2]
+        dy = focal_obs[t, 3]
 
-    neighbor_obs[:, :, 0] -= origin_x
-    neighbor_obs[:, :, 1] -= origin_y
+    theta = np.arctan2(dy, dx)
+
+    # this matrix rotates points by -theta (points are row matrixes)
+    c = np.cos(theta)
+    s = np.sin(theta)
+    rot_mat = np.array([
+        [ c,  s],
+        [-s,  c]
+    ], dtype=np.float32)
+
+    def apply_transform(pts, translate=True):
+        """
+        pts shape: (..., 2)
+        """
+        res = pts.copy()
+        if translate:
+            # Move the focal's agent current position to origin (0,0)
+            res = res - origin
+        # Rotate into the focal agent's heading-aligned frame
+        return res @ rot_mat
+
+    # Transform focal agent
+    # For positions: do translation + rotation
+    focal_obs[:, :2] = apply_transform(focal_obs[:, :2], translate=True)
+
+    # For velocities: only rotate
+    focal_obs[:, 2:4] = apply_transform(focal_obs[:, 2:4], translate=False)
+
+    # Future positions are also positions, so translate + rotate
+    focal_future[:, :2] = apply_transform(focal_future[:, :2], translate=True)
+
+    # Transform neighbors
+    # Valid rows are rows that are not all zeros
+    neighbor_mask = np.any(neighbor_obs != 0, axis=-1)   # (N, 50)
+
+    # Transform neighbor positions
+    neighbor_obs[:, :, :2] = apply_transform(neighbor_obs[:, :, :2], translate=True)
+
+    # Transform neighbor velocities
+    neighbor_obs[:, :, 2:4] = apply_transform(neighbor_obs[:, :, 2:4], translate=False)
+
+    # Restore padded rows to zero so the fake neighbors stay fake
+    neighbor_obs[~neighbor_mask] = 0
 
     return focal_obs, focal_future, neighbor_obs
 

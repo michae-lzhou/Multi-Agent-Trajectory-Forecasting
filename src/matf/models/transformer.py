@@ -11,6 +11,9 @@ class TransformerForecaster(nn.Module):
         self.hidden_size=hidden_size
         self.num_layers=num_layers
         self.type_embed=nn.Embedding(10, hidden_size)
+        
+        self.neighbor_spatial_proj = nn.Linear(hidden_size + 5, hidden_size)
+        self.focal_spatial_proj    = nn.Linear(hidden_size + 5, hidden_size)
 
         self.encoder = LSTMEncoder(hidden_size=hidden_size,
                                    num_layers=num_layers,
@@ -49,7 +52,41 @@ class TransformerForecaster(nn.Module):
         neighbor_tokens = neighbor_tokens + type_tokens
         neighbor_tokens = neighbor_tokens.view(B, N, -1)
 
+        # inject spatial features for attention
+        rel_pos          = neighbor_obs[:, :, -1, :2]
+        dist             = torch.norm(rel_pos, dim=-1, keepdim=True)
+        focal_heading    = focal_obs[:, -1, 4]
+        neighbor_heading = neighbor_obs[:, :, -1, 4]
+        rel_heading      = neighbor_heading - focal_heading.unsqueeze(1)
+        rel_heading      = (rel_heading + torch.pi) % (2 * torch.pi) - torch.pi
+
+        DIST_SCALE = 50.0
+
+        # spatial feature for neighbors
+        spatial_nbr = torch.cat([
+            rel_pos / DIST_SCALE,
+            dist / DIST_SCALE,
+            torch.cos(rel_heading).unsqueeze(-1),
+            torch.sin(rel_heading).unsqueeze(-1),
+        ], dim=-1)
+        spatial_nbr = spatial_nbr * neighbor_mask.unsqueeze(-1).float()
+
+        # with torch.no_grad():
+        #     real = spatial_nbr[neighbor_mask]
+        #     print(f"spatial mean: {real.mean():.3f}, std: {real.std():.3f}, max: {real.abs().max():.3f}")
+
+        neighbor_tokens = self.neighbor_spatial_proj(
+            torch.cat([neighbor_tokens, spatial_nbr], dim=-1)
+        )
+
+        # spatial feature for focal
+        spatial_focal = torch.zeros(B, 1, 5, device=focal_obs.device)
         focal_token_3d = focal_token.unsqueeze(1)
+        focal_token_3d = self.focal_spatial_proj(
+            torch.cat([focal_token_3d, spatial_focal], dim=-1)
+        )
+
+        # combine everything into scene
         scene_tokens = torch.cat([focal_token_3d, neighbor_tokens], dim=1)
 
         focal_mask = torch.zeros(B, 1, dtype=torch.bool,

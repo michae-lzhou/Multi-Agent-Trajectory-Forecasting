@@ -11,13 +11,13 @@ model:
 
 training:
   batch_size: 32
-  learning_rate: 1e-3
+  learning_rate: 3e-4
   num_epochs: 50
   grad_clip: 1.0
   checkpoint_dir: checkpoints/data_ablations
 
 data:
   neighbor_cap: 22
-  data_prefix: sort                  #baseline, info, orien, sort
+  data_prefix: orien                  #baseline, info, orien, sort
   train_dir: data/processed/train
   val_dir: data/processed/val

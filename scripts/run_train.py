@@ -47,6 +47,14 @@ def train_epoch(model, loader, optimizer, criterion, cfg, device):
 
         torch.nn.utils.clip_grad_norm_(model.parameters(),
                                  max_norm=cfg.training.grad_clip)
+
+        # print("\n--- Gradient Flow Diagnostic ---")
+        # for name, param in model.named_parameters():
+        #     if param.grad is not None:
+        #         print(f"  {name:60s}  grad={param.grad.norm():.6f}  weight={param.data.norm():.6f}")
+        #     else:
+        #         print(f"  {name:60s}  NO GRADIENT")
+
         optimizer.step()
 
         total_loss += loss.item()

@@ -1,3 +1,6 @@
+av2
+torch
 numpy
 pandas
+matplotlib
 tqdm

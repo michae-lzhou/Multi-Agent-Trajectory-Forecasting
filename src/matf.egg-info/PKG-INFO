@@ -5,8 +5,11 @@ Summary: Multi-agent trajectory forecasting project
 Author: Michael Zhou, Yibo Chen
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
+Requires-Dist: av2
+Requires-Dist: torch
 Requires-Dist: numpy
 Requires-Dist: pandas
+Requires-Dist: matplotlib
 Requires-Dist: tqdm
 
 # Multi-Agent Trajectory-Forecasting

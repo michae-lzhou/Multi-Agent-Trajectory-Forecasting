@@ -4,33 +4,84 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from matf.data.dataset import MATFDataset, collate_fn
 from matf.models.lstm import LSTMTrajectoryForecaster
+from matf.models.transformer import SocialLSTMTrajectoryForecaster
 from matf.utils.logger import TrainingLogger
 from matf.utils.viz import save_training_plot
 from matf.utils.metrics import min_ade, min_fde, miss_rate
 from matf.utils.config import load_config, save_config, make_run_name, \
                               print_config
 
+SCALE_POS = 10.0
+SCALE_VEL = 10.0
+
+def log_gradients(model):
+    """Print gradient norm for each top‑level module inside the model.
+
+    The output is grouped by the prefix before the first ``.`` in each
+    parameter name (e.g. ``encoder``, ``social_attn``, ``decoder``).  This
+    makes it easy to inspect which component is receiving signal during
+    backprop.
+    """
+    grads = {}
+    for name, param in model.named_parameters():
+        if param.grad is None:
+            continue
+        prefix = name.split(".")[0]
+        grads.setdefault(prefix, []).append(param.grad.norm().item())
+
+    for prefix, norms in grads.items():
+        mean_norm = sum(norms) / len(norms)
+        print(f"  {prefix:12s} grad norm (mean over {len(norms)} params): {mean_norm:.4e}")
+
+
 def train_epoch(model, loader, optimizer, criterion, cfg, device):
     model.train()
     total_loss = 0.0
     n_batches  = 0
 
-    for batch in loader:
-        focal_obs    = batch["focal_obs"].to(device)
-        focal_future = batch["focal_future"].to(device)
+    model_type = getattr(cfg.model, "type", "lstm")
 
-        # Forward pass
-        pred = model(
-            focal_obs=focal_obs,
-            target=focal_future,
-            mode=cfg.model.decoder_input
-        )
+    # whether to log gradients after every backward
+    debug_grads = getattr(cfg.training, "log_gradients", False)
+
+    for batch in loader:
+        focal_obs    = batch["focal_obs"].to(device).clone()
+        focal_future = batch["focal_future"].to(device).clone()
+        focal_obs[..., :2] /= SCALE_POS
+        focal_obs[..., 2:4] /= SCALE_VEL
+        focal_future[..., :2] /= SCALE_POS
+
+        # Forward pass; include neighbours if the model expects them
+        if model_type == "social":
+            neigh_obs = batch["neighbor_obs"].to(device).clone()
+            neigh_obs[..., :2] /= SCALE_POS
+            neigh_obs[..., 2:4] /= SCALE_VEL
+
+            mask = batch["neighbor_mask"].to(device)
+            pred = model(
+                focal_obs=focal_obs,
+                neighbors_obs=neigh_obs,
+                neighbor_mask=mask,
+                target=focal_future,
+                mode=cfg.model.decoder_input,
+            )
+        else:
+            pred = model(
+                focal_obs=focal_obs,
+                target=focal_future,
+                mode=cfg.model.decoder_input,
+            )
+
         pred = pred.squeeze(1)
         
         # Compute loss
         loss = criterion(pred, focal_future)
         optimizer.zero_grad()
         loss.backward()
+
+        if debug_grads:
+            print("gradient norms after backward:")
+            log_gradients(model)
 
         torch.nn.utils.clip_grad_norm_(model.parameters(),
                                  max_norm=cfg.training.grad_clip)
@@ -41,16 +92,34 @@ def train_epoch(model, loader, optimizer, criterion, cfg, device):
 
     return total_loss / n_batches
 
-def val_epoch(model, loader, device):
+def val_epoch(model, loader, device, cfg):
     model.eval()
     all_ade, all_fde, all_mr = [], [], []
 
+    model_type = getattr(cfg.model, "type", "lstm")
+
     with torch.no_grad():
         for batch in loader:
-            focal_obs    = batch["focal_obs"].to(device)
-            focal_future = batch["focal_future"].to(device)
+            focal_obs    = batch["focal_obs"].to(device).clone()
+            focal_future = batch["focal_future"].to(device).clone()
+            focal_obs[..., :2] /= SCALE_POS
+            focal_obs[..., 2:4] /= SCALE_VEL
+            focal_future[..., :2] /= SCALE_POS
 
-            pred = model(focal_obs=focal_obs, mode="last_pred")
+            if model_type == "social":
+                neigh_obs = batch["neighbor_obs"].to(device).clone()
+                neigh_obs[..., :2] /= SCALE_POS
+                neigh_obs[..., 2:4] /= SCALE_VEL
+
+                mask = batch["neighbor_mask"].to(device)
+                pred = model(
+                    focal_obs=focal_obs,
+                    neighbors_obs=neigh_obs,
+                    neighbor_mask=mask,
+                    mode="last_pred",
+                )
+            else:
+                pred = model(focal_obs=focal_obs, mode="last_pred")
 
             all_ade.append(min_ade(pred, focal_future))
             all_fde.append(min_fde(pred, focal_future))
@@ -85,12 +154,24 @@ def train(config_path):
     val_loader = DataLoader(val_dataset, batch_size=cfg.training.batch_size,
                             shuffle=False, collate_fn=collate_fn)
 
-    # TODO: modularize for both lstm and transformer
-    model = LSTMTrajectoryForecaster(
-        hidden_size=cfg.model.hidden_size,
-        num_layers=cfg.model.num_layers,
-        dropout=cfg.model.dropout
-    ).to(device)
+    # choose model based on configuration
+    model_type = getattr(cfg.model, "type", "lstm")
+    if model_type == "social":
+        model = SocialLSTMTrajectoryForecaster(
+            hidden_size=cfg.model.hidden_size,
+            num_layers=cfg.model.num_layers,
+            dropout=cfg.model.dropout,
+            num_heads=cfg.model.num_heads,
+            use_residual=cfg.model.use_residual,
+            use_layer_norm=cfg.model.use_layer_norm,
+            cell_state=cfg.model.cell_state,
+        ).to(device)
+    else:
+        model = LSTMTrajectoryForecaster(
+            hidden_size=cfg.model.hidden_size,
+            num_layers=cfg.model.num_layers,
+            dropout=cfg.model.dropout
+        ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=float(cfg.training.learning_rate))
@@ -104,7 +185,7 @@ def train(config_path):
     for epoch in range(1, cfg.training.num_epochs + 1):
         train_loss = train_epoch(model, train_loader, optimizer, criterion,
                                  cfg, device)
-        val_ade, val_fde, val_mr = val_epoch(model, val_loader, device)
+        val_ade, val_fde, val_mr = val_epoch(model, val_loader, device, cfg)
         
         train_losses.append(train_loss)
         val_ades.append(val_ade)

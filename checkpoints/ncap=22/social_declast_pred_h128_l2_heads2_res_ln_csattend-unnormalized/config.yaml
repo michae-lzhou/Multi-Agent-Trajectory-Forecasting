@@ -12,10 +12,10 @@ model:
 training:
   batch_size: 32
   learning_rate: 3e-4
-  num_epochs: 50            
+  num_epochs: 2            # set to 2 epochs when debugging gradients
   grad_clip: 1.0
   checkpoint_dir: "checkpoints/ncap=22"
-  log_gradients: false       # whether to inspect gradient norms each batch
+  log_gradients: true       # whether to inspect gradient norms each batch
 
 data:
   neighbor_cap: 22

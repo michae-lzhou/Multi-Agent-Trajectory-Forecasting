@@ -7,6 +7,7 @@ src/matf.egg-info/dependency_links.txt
 src/matf.egg-info/requires.txt
 src/matf.egg-info/top_level.txt
 src/matf/data/__init__.py
+src/matf/data/dataset.py
 src/matf/data/eda.py
 src/matf/data/partition_dataset.py
 src/matf/data/preprocess.py
@@ -15,5 +16,8 @@ src/matf/models/lstm.py
 src/matf/models/transformer.py
 src/matf/training/eval.py
 src/matf/training/train.py
+src/matf/utils/config.py
+src/matf/utils/inspect.py
+src/matf/utils/logger.py
 src/matf/utils/metrics.py
 src/matf/utils/viz.py

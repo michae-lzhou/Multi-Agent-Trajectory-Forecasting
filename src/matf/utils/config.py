@@ -21,9 +21,25 @@ def load_config(path):
     return cfg
 
 def make_run_name(cfg):
-    return (f"lstm_dec{cfg.model.decoder_input}"
-            f"_h{cfg.model.hidden_size}"
-            f"_l{cfg.model.num_layers}")
+    model_type = getattr(cfg.model, "type", "lstm")
+    parts = [model_type]
+
+    # common hyperparameters
+    parts.append(f"h{cfg.model.hidden_size}")
+    parts.append(f"l{cfg.model.num_layers}")
+
+    if model_type == "lstm":
+        parts.insert(1, f"dec{cfg.model.decoder_input}")
+    else:  # social/transformer-style model
+        parts.append(f"heads{cfg.model.num_heads}")
+        if cfg.model.use_residual:
+            parts.append("res")
+        if cfg.model.use_layer_norm:
+            parts.append("ln")
+        parts.append(f"cs{cfg.model.cell_state}")
+        parts.insert(1, f"dec{cfg.model.decoder_input}")
+
+    return "_".join(parts)
 
 def save_config(config_path, run_dir):
     run_dir = Path(run_dir)

@@ -4,18 +4,17 @@ model:
   num_layers: 2
   decoder_input: "last_pred"  # "zero" | "last_pred" | "teacher_forcing"
   dropout: 0.0
-  num_heads: 2                 # must divide hidden_size
-  use_residual: true
-  use_layer_norm: true
+  num_heads: 1                 # must divide hidden_size
+  use_residual: false
+  use_layer_norm: false
   cell_state: "attend"         # "zeros" | "focal" | "attend"
 
 training:
   batch_size: 32
   learning_rate: 3e-4
-  num_epochs: 50            
+  num_epochs: 50
   grad_clip: 1.0
   checkpoint_dir: "checkpoints/ncap=22"
-  log_gradients: false       # whether to inspect gradient norms each batch
 
 data:
   neighbor_cap: 22

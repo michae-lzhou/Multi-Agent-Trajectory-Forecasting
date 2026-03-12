@@ -89,3 +89,8 @@ class LSTMTrajectoryForecaster(nn.Module):
 # gt = torch.randn(8, 60, 2)
 # pred = model(x, target=gt, mode="teacher_forcing")
 # print(pred.shape)   # expect (8, 1, 60, 2)
+
+# TIPS:
+# Only need focal_obs as input to the model, neighbor_obs is not used in this baseline model
+# input shape: (B, 50, 4), which corresponds to B batches of 50 timesteps of observed trajectory, and each timestep has (x, y, vx, vy)
+# output shape: (B, 1, 60, 2), which corresponds to B batches of 1 predicted trajectory of 60 timesteps, and each timestep has (x, y)

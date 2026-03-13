@@ -49,6 +49,8 @@ data/
 ### 2. Preprocess the data
 
 ```bash
+# Split and sample from the raw dataset
+python scripts/run_partition.py
 # Preprocess train and val splits with neighbor cap of 22 (matches the best model)
 python scripts/run_preprocess.py --splits train val --neighbor_cap 22 --data_prefix baseline
 ```

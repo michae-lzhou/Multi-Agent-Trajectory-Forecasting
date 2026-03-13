@@ -17,6 +17,7 @@ training:
   checkpoint_dir: checkpoints/ncap=2
 
 data:
-  neighbor_cap: 22
+  neighbor_cap: 2
+  data_prefix: sort                  #baseline, info, orien, sort
   train_dir: data/processed/train
   val_dir: data/processed/val

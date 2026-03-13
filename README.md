@@ -12,7 +12,7 @@ This project implements multi-agent trajectory forecasting models using LSTM and
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:michae-lzhou/Multi-Agent-Trajectory-Forecasting.git
    cd Multi-Agent-Trajectory-Forecasting
    ```
 

@@ -8,6 +8,11 @@ This project implements multi-agent trajectory forecasting models using LSTM and
 
 ---
 
+## Predicted Output
+![image unavailable](visualizations/predictions.png)
+
+---
+
 ## Installation
 
 1. Clone the repository:
